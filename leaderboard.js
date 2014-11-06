@@ -1,23 +1,61 @@
-if (Meteor.isClient) {
-  // counter starts at 0
-  Session.setDefault("counter", 0);
+// MongoDB setup
+PlayersList = new Mongo.Collection('players');
 
-  Template.hello.helpers({
-    counter: function () {
-      return Session.get("counter");
-    }
-  });
-
-  Template.hello.events({
-    'click button': function () {
-      // increment the counter when button is clicked
-      Session.set("counter", Session.get("counter") + 1);
-    }
-  });
+// code to be executed on server only
+if(Meteor.isServer){
+    console.log("Hello server");
 }
 
-if (Meteor.isServer) {
-  Meteor.startup(function () {
-    // code to run on server at startup
-  });
+// code to be executed on client only
+if(Meteor.isClient){
+
+    // Helper function, generally used to generate HTML
+    Template.leaderboard.helpers({
+        'player': function() {
+            return PlayersList.find({}, {sort: {score: -1, name: 1} })
+        },
+        'selectedClass': function(){
+            var playerId = this._id;
+            var selectedPlayer = Session.get('selectedPlayer')
+            if(playerId == selectedPlayer){
+                return "selected"
+            }
+        },
+        'showSelectedPlayer': function(){
+            var selectedPlayer = Session.get('selectedPlayer');
+            return PlayersList.findOne(selectedPlayer)
+        }
+    });
+
+    // Functions handling events for leaderboard template
+    Template.leaderboard.events({
+        'click .player': function(){
+            var playerId = this._id;
+            Session.set('selectedPlayer', playerId);
+        },
+        'click .increment': function(){
+            var selectedPlayer = Session.get('selectedPlayer');
+            PlayersList.update(selectedPlayer, {$inc: {score: 5}});
+        },
+        'click .decrement': function(){
+            var selectedPlayer = Session.get('selectedPlayer');
+            PlayersList.update(selectedPlayer, {$inc: {score: -5}});
+        },
+        'click .remove': function(){
+            var selectedPlayer = Session.get('selectedPlayer');
+            PlayersList.remove(selectedPlayer);
+        }
+    });
+
+    // Functions handling events for addPlayerForm template
+    Template.addPlayerForm.events({
+        'submit form': function(evt){
+            evt.preventDefault();
+            var playerNameVar = event.target.playerName.value;
+            PlayersList.insert({
+                name: playerNameVar,
+                score: 0
+            })
+        }
+    });
 }
